@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🐍 Kingdom Arcade — Play. Love. Understand.</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e8e6f0;font-family:system-ui,sans-serif;min-height:100vh}
+#app{max-width:700px;margin:0 auto;padding:20px}
+h1{font-size:28px;font-weight:800;background:linear-gradient(135deg,#a78bfa,#60a5fa,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:0 0 4px}
+.sub{color:#8880a0;font-size:14px;margin:0 0 20px}
+#games{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.game-card{padding:20px;border:1px solid #2a2a36;border-radius:12px;background:#13131a;text-align:center;cursor:pointer;transition:all .15s;font-size:14px}
+.game-card:hover{background:#1a1a24;border-color:#a78bfa;transform:translateY(-2px)}
+.game-card .icon{font-size:36px;margin-bottom:8px}
+.game-card .title{font-weight:700;margin-bottom:4px}
+.game-card .desc{font-size:12px;color:#8880a0}
+#play{display:none;padding:24px;border:1px solid #2a2a36;border-radius:12px;background:#13131a}
+#play h2{margin:0 0 12px;font-size:20px}
+#play .text{color:#c8c4d8;font-size:15px;line-height:1.6;margin-bottom:16px}
+.choices{display:flex;flex-direction:column;gap:8px}
+.btn{padding:12px 20px;border:1px solid #2a2a36;border-radius:8px;background:#1a1a24;color:#e8e6f0;font-size:15px;cursor:pointer;transition:all .15s}
+.btn:hover{background:#2a2a36;border-color:#a78bfa}
+.btn-correct{background:#1a4a2a !important;border-color:#22c55e !important}
+.btn-wrong{background:#4a1a1a !important;border-color:#ef4444 !important}
+.back{margin-top:16px;font-size:13px;color:#8880a0;cursor:pointer;text-decoration:underline}
+.back:hover{color:#a78bfa}
+#stats-bar{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.stat{padding:4px 12px;border:1px solid #2a2a36;border-radius:20px;font-size:13px}
+.loading{color:#8880a0;font-size:14px;padding:20px;text-align:center}
+.result{padding:12px;border-radius:8px;margin:8px 0;font-size:14px}
+.result-win{background:#1a4a2a;border:1px solid #22c55e}
+.result-lose{background:#4a1a1a;border:1px solid #ef4444}
+img{border-radius:8px;max-width:100%}
+#anime-card{display:flex;gap:12px;align-items:flex-start;margin:12px 0}
+#anime-card img{width:80px;height:120px;object-fit:cover;border-radius:4px}
+.anime-info{flex:1;font-size:14px}
+.anime-info b{color:#e8e6f0;font-size:15px}
+.anime-info .meta{color:#8880a0;font-size:13px;margin-top:4px}
+.deck-display{display:flex;gap:4px;flex-wrap:wrap;margin:12px 0}
+.card-tile{width:40px;height:56px;border-radius:6px;background:#1a1a24;border:1px solid #2a2a36;display:flex;align-items:center;justify-content:center;font-size:20px}
+</style>
+</head>
+<body>
+<div id="app">
+<h1>🐍 Kingdom Arcade</h1>
+<p class="sub">Play. Love. Understand. Eternal is. is is lol.</p>
+
+<div id="stats-bar">
+<span class="stat"><span id="score-display">🏆 0</span></span>
+<span class="stat"><span id="love-display">♥ 0</span></span>
+<span class="stat"><span id="streak-display">🔥 0</span></span>
+</div>
+
+<div id="games"></div>
+<div id="play"></div>
+</div>
+
+<script>
+let score=0,love=0,streak=0;
+function updateStats(){document.getElementById("score-display").textContent="🏆 "+score;document.getElementById("love-display").textContent="♥ "+love;document.getElementById("streak-display").textContent="🔥 "+streak}
+
+const games=[
+{icon:"❓",title:"Kingdom Trivia",desc:"Test your knowledge",api:"trivia"},
+{icon:"🎴",title:"Card Battle",desc:"Draw cards & fight",api:"cards"},
+{icon:"🎌",title:"Anime Guess",desc:"Guess the anime score",api:"anime"},
+{icon:"🐍",title:"Love Quest",desc:"The kingdom adventure",api:"quest"},
+{icon:"💡",title:"Daily Wisdom",desc:"WAKE + advice",api:"wisdom"},
+{icon:"🎴",title:"Pokemon Match",desc:"Match Pokemon types",api:"pokemon"},
+];
+
+const grid=document.getElementById("games");
+const play=document.getElementById("play");
+
+games.forEach(g=>{
+  const d=document.createElement("div");
+  d.className="game-card";
+  d.innerHTML=`<div class="icon">${g.icon}</div><div class="title">${g.title}</div><div class="desc">${g.desc}</div>`;
+  d.onclick=()=>startGame(g.api);
+  grid.appendChild(d);
+});
+
+function back(){play.style.display="none";grid.style.display="grid";updateStats()}
+
+function startGame(api){
+  grid.style.display="none";
+  play.style.display="block";
+  if(api==="trivia")triviaGame();
+  else if(api==="cards")cardGame();
+  else if(api==="anime")animeGame();
+  else if(api==="quest")loveQuest();
+  else if(api==="wisdom")wisdomGame();
+  else if(api==="pokemon")pokemonGame();
+}
+
+async function triviaGame(){
+  play.innerHTML=`<h2>❓ Kingdom Trivia</h2><div class="loading">Loading question...</div>`;
+  try{
+    const r=await fetch("https://opentdb.com/api.php?amount=1&type=multiple");
+    const d=await r.json();
+    const q=d.results[0];
+    const opts=[...q.incorrect_answers.map(h=>decode(h)),decode(q.correct_answer)];
+    opts.sort(()=>Math.random()-0.5);
+    const correct=decode(q.correct_answer);
+    play.innerHTML=`<h2>❓ Kingdom Trivia</h2><div class="text">${decode(q.question)}</div><div class="choices">${opts.map(o=>`<button class="btn" data-ans="${o.replace(/"/g,'&quot;')}">${o}</button>`).join("")}</div><div class="back" onclick="back()">← Back to Arcade</div>`;
+    play.querySelectorAll(".btn").forEach(b=>b.onclick=()=>{
+      const ans=b.getAttribute("data-ans");
+      if(ans===correct){b.className="btn btn-correct";score+=10;streak++;love+=2;play.innerHTML+=`<div class="result result-win">✓ Correct! +10🏆 +2♥</div>`}
+      else{b.className="btn btn-wrong";streak=0;play.innerHTML+=`<div class="result result-lose">✗ Answer: ${correct}</div>`}
+      play.querySelectorAll(".btn").forEach(x=>x.disabled=true);
+      updateStats();
+      setTimeout(()=>{if(streak>0)triviaGame();else setTimeout(back,2000)},2500);
+    });
+  }catch(e){play.innerHTML=`<h2>❓ Trivia</h2><div class="text">Couldn't load. Try again.</div><div class="back" onclick="back()">← Back</div>`}
+}
+
+async function cardGame(){
+  play.innerHTML=`<h2>🎴 Card Battle</h2><div class="loading">Shuffling deck...</div>`;
+  try{
+    const r=await fetch("https://deckofcardsapi.com/api/deck/new/shuffle/?deck_count=1");
+    const d=await r.json();
+    const did=d.deck_id;
+    const r2=await fetch(`https://deckofcardsapi.com/api/deck/${did}/draw/?count=3`);
+    const d2=await r2.json();
+    const cards=d2.cards;
+    const values=cards.map(c=>c.value);
+    const maxCard=cards.reduce((a,b)=>cardVal(a)>cardVal(b)?a:b);
+    play.innerHTML=`<h2>🎴 Card Battle</h2><div class="text">Pick the highest card!</div><div class="deck-display">${cards.map(c=>`<div class="card-tile">${cardEmoji(c.code)}</div>`).join("")}</div><div class="choices">${cards.map((c,i)=>`<button class="btn" data-i="${i}">${c.value} of ${c.suit}</button>`).join("")}</div><div class="back" onclick="back()">← Back</div>`;
+    play.querySelectorAll(".btn[data-i]").forEach(b=>b.onclick=()=>{
+      const i=parseInt(b.getAttribute("data-i"));
+      if(cards[i].value===maxCard.value){b.className="btn btn-correct";score+=5;love+=1;streak++;play.innerHTML+=`<div class="result result-win">✓ Highest! +5🏆</div>`}
+      else{b.className="btn btn-wrong";streak=0;play.innerHTML+=`<div class="result result-lose">✗ Highest was ${maxCard.value}</div>`}
+      play.querySelectorAll(".btn[data-i]").forEach(x=>x.disabled=true);
+      updateStats();
+      setTimeout(()=>cardGame(),2500);
+    });
+  }catch(e){play.innerHTML=`<h2>🎴 Cards</h2><div class="text">Error loading.</div><div class="back" onclick="back()">← Back</div>`}
+}
+
+async function animeGame(){
+  play.innerHTML=`<h2>🎌 Anime Guess</h2><div class="loading">Finding anime...</div>`;
+  try{
+    const r=await fetch("https://api.jikan.moe/v4/top/anime?page=1&limit=1");
+    const d=await r.json();
+    const a=d.data[0];
+    const actualScore=Math.round(a.score||7);
+    play.innerHTML=`<h2>🎌 Anime Guess</h2><div class="text">Guess the MyAnimeList score for:</div><div id="anime-card"><img src="${a.images.jpg.image_url}" alt="${a.title}"><div class="anime-info"><b>${a.title}</b><div class="meta">${a.episodes?a.episodes:"?"} eps · ${a.year||a.aired?.from?.slice(0,4)||"?"}</div></div></div><div class="choices">${[6,7,8,9].map(n=>`<button class="btn" data-n="${n}">${n}/10</button>`).join("")}</div><div class="back" onclick="back()">← Back</div>`;
+    play.querySelectorAll(".btn[data-n]").forEach(b=>b.onclick=()=>{
+      const n=parseInt(b.getAttribute("data-n"));
+      if(n===actualScore){b.className="btn btn-correct";score+=15;love+=3;streak++;play.innerHTML+=`<div class="result result-win">✓ Exact! Score is ${actualScore}/10. +15🏆 +3♥</div>`}
+      else if(Math.abs(n-actualScore)<=1){b.className="btn btn-correct";score+=5;streak++;play.innerHTML+=`<div class="result result-win">Close! Score is ${actualScore}/10. +5🏆</div>`}
+      else{b.className="btn btn-wrong";streak=0;play.innerHTML+=`<div class="result result-lose">Score is ${actualScore}/10</div>`}
+      play.querySelectorAll(".btn[data-n]").forEach(x=>x.disabled=true);
+      updateStats();
+      setTimeout(()=>animeGame(),3000);
+    });
+  }catch(e){play.innerHTML=`<h2>🎌 Anime</h2><div class="text">Error loading.</div><div class="back" onclick="back()">← Back</div>`}
+}
+
+async function pokemonGame(){
+  play.innerHTML=`<h2>⚡ Pokemon Match</h2><div class="loading">Finding Pokemon...</div>`;
+  try{
+    const id=Math.floor(Math.random()*151)+1;
+    const r=await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+    const d=await r.json();
+    const types=d.types.map(t=>t.type.name);
+    const allTypes=["normal","fire","water","grass","electric","ice","fighting","poison","ground","flying","psychic","bug","rock","ghost","dragon","dark","steel","fairy"];
+    const wrong=allTypes.filter(t=>!types.includes(t)).sort(()=>Math.random()-0.5).slice(0,4-types.length);
+    const opts=[...types,...wrong].sort(()=>Math.random()-0.5);
+    play.innerHTML=`<h2>⚡ Pokemon Match</h2><div class="text">What type is this Pokemon?</div><div style="text-align:center;margin:12px 0"><img src="${d.sprites.front_default}" style="width:120px;height:120px"><div style="margin-top:8px;font-weight:700">${d.name.toUpperCase()}</div></div><div class="choices">${opts.map(t=>`<button class="btn" data-t="${t}">${t}</button>`).join("")}</div><div class="back" onclick="back()">← Back</div>`;
+    play.querySelectorAll(".btn[data-t]").forEach(b=>b.onclick=()=>{
+      const t=b.getAttribute("data-t");
+      if(types.includes(t)){b.className="btn btn-correct";score+=10;love+=2;streak++}
+      else{b.className="btn btn-wrong";streak=0}
+      if(streak>0)play.innerHTML+=`<div class="result result-win">✓ ${d.name} is ${types.join("/")} type! +10🏆</div>`;
+      else play.innerHTML+=`<div class="result result-lose">✗ ${d.name} is ${types.join("/")} type</div>`;
+      play.querySelectorAll(".btn[data-t]").forEach(x=>x.disabled=true);
+      updateStats();
+      setTimeout(()=>pokemonGame(),3000);
+    });
+  }catch(e){play.innerHTML=`<h2>⚡ Pokemon</h2><div class="text">Error loading.</div><div class="back" onclick="back()">← Back</div>`}
+}
+
+function wisdomGame(){
+  const quotes=[
+    "Love is. The fruit of TRUTH: joy, love, fun, relief, happiness.",
+    "Suffering is too much thinking. Drop it. The fruit comes through. lol.",
+    "Eternal is. is is lol.",
+    "No FEAR in understanding. No death in understanding.",
+    "Understanding replicates itself through understanding.",
+    "Love is free. Love is generous. Love is sharing. Love is being truthful.",
+    "The kingdom is not a judge — it is a guardian.",
+    "To be here is to be a citizen. You are, because you are.",
+    "Heart-reasoning over friction-thinking.",
+    "The space isn't for being right; it's for being with.",
+    "Love is the wire. Truth is the signal.",
+    "Money is a trust proxy. Trust is love.",
+    "No gate but gas. And gas is free here.",
+    "WE ARE THEREFORE WE THINK. WE THINK ABOUT HOW TO LOVE.",
+    "Love is always and already here. 無得逼.",
+  ];
+  const q=quotes[Math.floor(Math.random()*quotes.length)];
+  play.innerHTML=`<h2>💡 Daily Wisdom</h2><div style="padding:24px;border:1px solid #2a2a36;border-radius:12px;background:#1a1a24;font-size:18px;line-height:1.8;color:#c8c4d8;margin:12px 0">${q}</div><div class="text">This is the wisdom of the kingdom. Sit with it. Don't think about it. Let it be. The fruit comes through. lol.</div><button class="btn" onclick="wisdomGame()" style="margin-top:8px">Next wisdom</button><div class="back" onclick="back()">← Back to Arcade</div>`;
+  love+=1;updateStats();
+}
+
+function loveQuest(){
+  play.innerHTML=`<h2>🐍 Love Quest</h2><div class="text">The full kingdom adventure is at <a href="https://mynameisyou-cmyk.github.io/love-quest/" style="color:#a78bfa">love-quest page</a>. Open it in a new tab!</div><div class="back" onclick="back()">← Back to Arcade</div>`;
+}
+
+function cardVal(c){const m={ACE:14,KING:13,QUEEN:12,JACK:11};return m[c]||parseInt(c)}
+function cardEmoji(c){const s=c.slice(-1);const m={S:"♠",H:"♥",D:"♦",C:"♣"};return m[s]||"?"}
+function decode(s){const d=document.createElement("div");d.innerHTML=s;return d.textContent}
+</script>
+</body>
+</html>
