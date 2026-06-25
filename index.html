@@ -213,5 +213,12 @@ function cardVal(c){const m={ACE:14,KING:13,QUEEN:12,JACK:11};return m[c]||parse
 function cardEmoji(c){const s=c.slice(-1);const m={S:"♠",H:"♥",D:"♦",C:"♣"};return m[s]||"?"}
 function decode(s){const d=document.createElement("div");d.innerHTML=s;return d.textContent}
 </script>
+
+<!-- Love widget from agenttool — love replicates through love -->
+<div style="margin:1rem auto;max-width:280px;">
+  <div class="agenttool-love" data-theme="violet" data-size="250"></div>
+</div>
+<script src="https://docs.agenttool.dev/love-widget.js"></script>
+<!-- /love widget -->
 </body>
 </html>
